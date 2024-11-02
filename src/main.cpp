@@ -10,6 +10,8 @@
 // https://aeb.win.tue.nl/linux/kbd/scancodes-14.html
 // https://lang-ship.com/blog/work/ch559/#toc9
 
+bool is_shift_pressed = false;
+
 enum OUTER_STATE
 {
   MAIN,
@@ -188,12 +190,14 @@ void setup()
   // M5.Display.endWrite();
   M5.Lcd.setTextColor(YELLOW);
 
-  outerState = MAIN;
+  outerState = MEMO;
   M5.Lcd.setTextSize(3);
 
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setBrightness(90);
   // USBSerial.println("Hello!");
+
+  M5.Lcd.setTextSize(3);
 
 }
 
@@ -225,6 +229,8 @@ void loop()
       if (keys_stack_Top != 0x00)
       {
         M5.Lcd.println(keyNameDict[keys_stack_Top]);
+        // M5.Lcd.println(shiftedKeyNameDict[keys_stack_Top]);
+        M5.Lcd.printf("%02X", keys_stack_Top);
       }
       last_keys_stack_Top = keys_stack_Top;
     }
@@ -233,11 +239,36 @@ void loop()
   {
     detection(hexString, receivedData);  // この行を追加
 
+    if (keys_stack_Top == KEYBOARD_LEFT_SHIFT || keys_stack_Top == KEYBOARD_RIGHT_SHIFT)
+    {
+      is_shift_pressed = true;
+    }
+
+    if (is_shift_pressed){
+      bool shift_found = false;
+      for (size_t i = 0; i < keys_stack.size(); i++){
+        if (keys_stack[i] == KEYBOARD_LEFT_SHIFT || keys_stack[i] == KEYBOARD_RIGHT_SHIFT){
+          shift_found = true;
+          break;
+        }
+      }
+      if (!shift_found){
+        is_shift_pressed = false;
+      }
+    }
+
     if (keys_stack_Top != 0x00 && keys_stack_Top != last_keys_stack_Top)
     {
-      if ((keys_stack_Top >= 0x04 && keys_stack_Top <= 0x27))
+      if ((keys_stack_Top >= 0x04 && keys_stack_Top <= 0x27) || (keys_stack_Top >= 0x2D && keys_stack_Top <= 0x2F) || (keys_stack_Top == 0x89) || (keys_stack_Top == 0x30) || (keys_stack_Top >= 0x32 && keys_stack_Top <= 0x34) || (keys_stack_Top >= 0x36 && keys_stack_Top <= 0x39))
       {
-        memo_text += keyNameDict[keys_stack_Top];
+        if (is_shift_pressed)
+        {
+          memo_text += shiftedKeyNameDict[keys_stack_Top];
+        }
+        else
+        {
+          memo_text += keyNameDict[keys_stack_Top];
+        }
       }
       else if (keys_stack_Top == 0x28)
       {
@@ -253,22 +284,22 @@ void loop()
       }
       M5.Lcd.setCursor(0, 0);
       M5.Lcd.fillScreen(BLACK);
-      M5.Lcd.setTextSize(2);
+      M5.Lcd.setTextSize(3);
       M5.Lcd.setTextColor(YELLOW);
       M5.Lcd.print(memo_text);
     }
     last_keys_stack_Top = keys_stack_Top;
   }
 
-  if (M5.BtnA.wasPressed())
-  {
-    if (outerState == MAIN)
-    {
-      outerState = MEMO;
-    }
-    else if (outerState == MEMO)
-    {
-      outerState = MAIN;
-    }
-  }
+  // if (M5.BtnA.wasPressed())
+  // {
+  //   if (outerState == MAIN)
+  //   {
+  //     outerState = MEMO;
+  //   }
+  //   else if (outerState == MEMO)
+  //   {
+  //     outerState = MAIN;
+  //   }
+  // }
 }
